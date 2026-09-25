@@ -86,6 +86,41 @@ The web chat application will start on local port `8080`.
 
 ---
 
+## Deployment & Production Hosting Guide
+
+When deploying this project to production on Google Cloud, keep the following key steps and permissions in mind:
+
+### 1. Deploying the Agent Backend (Agent Engine)
+Deploy the agent logic in `app/` to Vertex AI Agent Runtime:
+```bash
+agents-cli deploy --target agent_runtime
+```
+This provisions a Reasoning Engine resource name (e.g., `projects/<PROJECT_ID>/locations/us-east1/reasoningEngines/<ENGINE_ID>`).
+
+### 2. Deploying the Frontend (Google Cloud Run)
+Build and deploy the FastAPI proxy container from `frontend/`:
+```bash
+cd frontend
+gcloud run deploy travel-concierge-frontend \
+  --source . \
+  --region us-east1 \
+  --allow-unauthenticated \
+  --set-env-vars AGENT_ENGINE_RESOURCE_NAME="projects/<YOUR_PROJECT_ID>/locations/us-east1/reasoningEngines/<ENGINE_ID>",AGENT_DIRECTORY="app"
+```
+
+### 3. Essential IAM Permissions & Cloud Services
+Ensure the relevant service accounts have the required roles:
+- **Agent Service Account** (Reasoning Engine):
+  - `roles/datastore.user` (to query & write to Firestore `destinations`)
+  - `roles/storage.objectAdmin` (to upload generated images and videos to GCS)
+  - `roles/aiplatform.user` (to call Vertex AI multimodal models)
+- **Cloud Run Service Account**:
+  - `roles/aiplatform.user` (to allow browser/proxy requests to communicate with the Agent Engine via A2A protocol)
+- **GCP APIs to Enable**:
+  - `aiplatform.googleapis.com`, `firestore.googleapis.com`, `storage.googleapis.com`, `run.googleapis.com`
+
+---
+
 ## Planned / Future Features (Not Yet Implemented)
 
 - **Automated Weather API Integration**: Live weather API integration beyond simulated updates.
